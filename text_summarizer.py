@@ -194,8 +194,9 @@ def score_sentences_by_v(V, S, tokenized_sentences, num_of_sent):
 
 
 def main():
-    file_name = input("Enter the filename: ").strip()
+    file_name = input("Enter the filename to read from: ").strip()
     num_sent = int(input("Enter number of top sentences to return: ").strip())
+    output_file  = input("Enter the filename to write: ").strip()
 
     try:
         with open(file_name, "r", encoding="utf-8") as f:
@@ -216,9 +217,9 @@ def main():
     _, S, V = svd.performSVD()
     top_sentences = score_sentences_by_v(V, S, tokenized_sentences, num_of_sent=num_sent)
 
-    print("\nTop-ranked sentences:")
-    for idx, score, sentence in top_sentences:
-        print(text.split(".")[idx])
+    with open(output_file, "w", encoding="utf-8") as f:
+        for idx, _, _ in top_sentences:
+            f.write(text.split(".")[idx].strip() + ".\n")
 
 if __name__ == "__main__":
     main()
