@@ -143,15 +143,12 @@ def test_svd(num_tests=100, threshold=1e-5):
         matrix = np.random.rand(*shape)
 
         try:
-            # Custom SVD
             svd_custom = SVD(matrix, sents=[])
             A_custom = svd_custom.U @ svd_custom.S @ svd_custom.V
 
-            # Numpy SVD for reference
             U_lib, S_lib, Vt_lib = np.linalg.svd(matrix, full_matrices=False)
             A_lib = U_lib @ np.diag(S_lib) @ Vt_lib
 
-            # Check reconstruction error for both
             err_custom = np.linalg.norm(matrix - A_custom)
             err_lib = np.linalg.norm(matrix - A_lib)
 
@@ -187,7 +184,7 @@ def score_sentences_by_v(V, S, tokenized_sentences, num_of_sent):
     result = [
         (idx, score, " ".join(tokenized_sentences[idx]))
         for idx, score in ranked_sentences
-        if idx < len(tokenized_sentences)  # ✅ avoid IndexError here
+        if idx < len(tokenized_sentences)
     ]
 
     return result[:num_of_sent]
