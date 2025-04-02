@@ -130,7 +130,7 @@ class Preprocess():
             words = [re.sub(r"[^a-zA-Z0-9]", "", word) for word in words]
             words = [self.lemmatizer.lemmatize(word) for word in words if word not in stop_words and word != ""]
             processed_sent.append(words)
-        return processed_sent
+        return processed_sent, sentences
 
 # with open("text2.txt", "r", encoding="UTF-8") as file:
 #     text = " ".join(file.readlines())
@@ -143,12 +143,15 @@ def test_svd(num_tests=100, threshold=1e-5):
         matrix = np.random.rand(*shape)
 
         try:
+            # Custom SVD
             svd_custom = SVD(matrix, sents=[])
             A_custom = svd_custom.U @ svd_custom.S @ svd_custom.V
 
+            # Numpy SVD for reference
             U_lib, S_lib, Vt_lib = np.linalg.svd(matrix, full_matrices=False)
             A_lib = U_lib @ np.diag(S_lib) @ Vt_lib
 
+            # Check reconstruction error for both
             err_custom = np.linalg.norm(matrix - A_custom)
             err_lib = np.linalg.norm(matrix - A_lib)
 
@@ -164,16 +167,16 @@ def test_svd(num_tests=100, threshold=1e-5):
     print(f"Total failures (custom SVD error > {threshold}): {failed}")
     
 
-def score_sentences_by_v(V, S, tokenized_sentences, num_of_sent):
+def score_sentences_by_u(U, S, tokenized_sentences, num_of_sent):
 
-    if V.shape[0] == 0 or S.shape[0] == 0:
+    if U.shape[0] == 0 or S.shape[0] == 0:
         print("SVD returned empty matrix. Check the input text or preprocessing.")
         return []
 
-    first_col_v = V[0]
+    first_col_u = U[0]
     largest_singular_value = S[0, 0]
 
-    sentence_scores = first_col_v * largest_singular_value
+    sentence_scores = first_col_u * largest_singular_value
 
     ranked_sentences = sorted(
         enumerate(sentence_scores),
@@ -204,19 +207,19 @@ def main():
 
     preprocess = Preprocess(text)
     # print(preprocess.text)
-    tokenized_sentences = preprocess.text
+    tokenized_sentences, sentences = preprocess.text
     tf_idf = TF_IDF(tokenized_sentences)
     # print(tf_idf.matrix)
 
 
     svd = SVD(tf_idf.matrix, tokenized_sentences)
 
-    _, S, V = svd.performSVD()
-    top_sentences = score_sentences_by_v(V, S, tokenized_sentences, num_of_sent=num_sent)
+    U, S, _ = svd.performSVD()
+    top_sentences = score_sentences_by_u(U, S, tokenized_sentences, num_of_sent=num_sent)
 
     with open(output_file, "w", encoding="utf-8") as f:
         for idx, _, _ in top_sentences:
-            f.write(text.split(".")[idx].strip() + ".\n")
+            f.write(sentences[idx].strip() + "\n")
 
 if __name__ == "__main__":
     main()
