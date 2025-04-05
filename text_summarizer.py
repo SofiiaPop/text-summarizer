@@ -17,6 +17,13 @@ class SVD():
 
 
     def find_eigen(self, A, num_iterations=1000, tolerance=1e-6):
+        """
+        Find the dominant eigenvalue and eigenvector of a matrix A using the power iteration method.
+        :param A: Input matrix
+        :param num_iterations: Number of iterations to perform
+        :param tolerance: Tolerance for convergence
+        :return: Dominant eigenvalue and eigenvector
+        """
         n = A.shape[0]
         b_k = np.random.rand(n)
 
@@ -35,6 +42,10 @@ class SVD():
         return eigenvalue, b_k
 
     def performSVD(self):
+        """
+        Perform Singular Value Decomposition (SVD) on the TF-IDF matrix.
+        :return: U, S, V matrices
+        """
         m, n = self.tf_idf_matrix.shape
         a = self.tf_idf_matrix
         aT = self.tf_idf_matrix.T
@@ -56,7 +67,7 @@ class SVD():
 
         for i in range(n):
             sigma = singular_values[i]
-            if (sigma > 1e-10):
+            if sigma > 1e-10:
                 u[:, i] = a @ v[:, i] * (1/sigma)
             else:
                 u[:, i] = np.zeros(m)
@@ -65,11 +76,19 @@ class SVD():
         return u, s, v.T
 
 class TF_IDF():
+    """
+    Class to calculate the TF-IDF matrix for a given set of sentences.
+    """
     def __init__(self, sents):
         self.sents = sents
         self.matrix = self.tf_idf(sents)
 
     def tf_idf(self, sents):
+        """
+        Calculate the TF-IDF matrix for the given sentences.
+        :param sents: List of tokenized sentences
+        :return: TF-IDF matrix
+        """
         sents_num = len(sents)
         unique_words = []
         for sent in sents:
@@ -77,8 +96,8 @@ class TF_IDF():
                 if word not in unique_words:
                     unique_words.append(word)
         matrix = [[0.0 for i in range(len(unique_words))] for j in range(sents_num)]
-        for row in range(len(matrix)):
-            for col in range(len(matrix[0])):
+        for row, _ in enumerate(matrix):
+            for col, _ in enumerate(matrix[0]):
                 sentence = sents[row]
                 word = unique_words[col]
                 tf = sentence.count(word) / len(sentence)
@@ -88,34 +107,56 @@ class TF_IDF():
         return matrix
 
 class Preprocess():
+    """
+    Class to preprocess the input text.
+    """
     def __init__(self, t):
         self.lemmatizer = WordNetLemmatizer()
         self.text = self.preprocess(t)
 
     def preprocess(self, t):
-        text = t.lower()
-        text = re.sub(r'\s+', ' ', text)
+        """
+        Preprocess the input text by removing unwanted characters and tokenizing sentences.
+        :param t: Input text
+        :return: List of tokenized sentences
+        """
+        text = re.sub(r'\s+', ' ', t)
         text = re.sub(r'\\n', ' ', text)
         text = text.strip()
 
         sentences = sent_tokenize(text)
         stop_words = set(stopwords.words("english"))
 
+        sentences = [s for s in sentences if not s.startswith("SECTION")\
+                      and not s.startswith("ARTICLE")\
+                      and not s.startswith("CHAPTER")]
+
         processed_sent = []
         for sent in sentences:
+            sent = sent.lower()
             words = word_tokenize(sent)
             words = [re.sub(r"[^a-zA-Z0-9]", "", word) for word in words]
-            words = [self.lemmatizer.lemmatize(word) for word in words if word not in stop_words and word != ""]
+            words = [self.lemmatizer.lemmatize(word) \
+                    for word in words \
+                        if word not in stop_words and word != ""]
             processed_sent.append(words)
         return processed_sent, sentences
 
-def score_sentences_by_u(U, S, tokenized_sentences, num_of_sent):
-    if U.shape[0] == 0 or S.shape[0] == 0:
+def score_sentences_by_u(u, s, original_sentences, num_of_sent):
+    """
+    Score sentences based on the first column of U and the largest singular value.
+    :param U: U matrix from SVD
+    :param S: S matrix from SVD
+    :param original_sentences: Original sentences
+    :param num_of_sent: Number of sentences to return
+    :return: List of tuples containing sentence index, score, and original sentence
+    """
+    if u.shape[0] == 0 or s.shape[0] == 0:
         print("SVD returned empty matrix. Check the input text or preprocessing.")
         return []
 
-    first_col_u = U[0]
-    largest_singular_value = S[0, 0]
+    first_col_u = u[:, 0]
+    largest_singular_value = s[0, 0]
 
     sentence_scores = first_col_u * largest_singular_value
 
@@ -125,38 +166,39 @@ def score_sentences_by_u(U, S, tokenized_sentences, num_of_sent):
         reverse=True
     )
 
+    top_ranked = ranked_sentences[:num_of_sent]
+
+    chronological_order = sorted(
+        top_ranked,
+        key=lambda x: x[0]
+    )
+
     result = [
-        (idx, score, " ".join(tokenized_sentences[idx]))
-        for idx, score in ranked_sentences
-        if idx < len(tokenized_sentences)
+        (idx, score, original_sentences[idx])
+        for idx, score in chronological_order
     ]
 
-    return result[:num_of_sent]
+    return result
 
-
-def main():
-    file_name = input("Enter the filename to read from: ").strip()
-    num_sent = int(input("Enter number of top sentences to return: ").strip())
-    output_file  = input("Enter the filename to write: ").strip()
-
-    try:
-        with open(file_name, "r", encoding="utf-8") as f:
-            text = f.read()
-    except FileNotFoundError:
-        print(f"File '{file_name}' not found.")
-        return
-
+def run_text_summarization(text, sentences_count, output_file=None):
+    """
+    Run the text summarization process.
+    :param text: Input text to summarize
+    :param sentences_count: Number of sentences to return
+    :param output_file: Optional output file to save the summary
+    :return: Summary as a string
+    """
     preprocess = Preprocess(text)
     tokenized_sentences, sentences = preprocess.text
     tf_idf = TF_IDF(tokenized_sentences)
     svd = SVD(tf_idf.matrix, tokenized_sentences)
 
-    U, S, _ = svd.performSVD()
-    top_sentences = score_sentences_by_u(U, S, tokenized_sentences, num_of_sent=num_sent)
+    u, s = svd.U, svd.S
+    top_sentences = score_sentences_by_u(u, s, sentences, num_of_sent=sentences_count)
 
-    with open(output_file, "w", encoding="utf-8") as f:
-        for idx, _, _ in top_sentences:
-            f.write(sentences[idx].strip() + "\n")
+    if output_file:
+        with open(output_file, "w", encoding="utf-8") as file:
+            for idx, _, _ in top_sentences:
+                file.write(sentences[idx].strip() + "\n")
 
-if __name__ == "__main__":
-    main()
+    return "".join(sentence.strip() + "\n" for _, _, sentence in top_sentences)
