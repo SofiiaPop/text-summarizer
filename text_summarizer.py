@@ -1,13 +1,6 @@
 import re
 import nltk
 import random
-# nltk.download('punkt')
-# nltk.download('wordnet')
-# nltk.download('omw-1.4')
-# nltk.download('punkt_tab')
-# nltk.download('stopwords')
-
-# pylint: disable=C0200
 
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.corpus import stopwords
@@ -21,19 +14,42 @@ class SVD():
         self.tf_idf_matrix = np.array(matrix)
         self.sentences = sents
         self.U, self.S, self.V = self.performSVD()
-    
+
+
+    def find_eigen(self, A, num_iterations=1000, tolerance=1e-6):
+        n = A.shape[0]
+        b_k = np.random.rand(n)
+
+        for _ in range(num_iterations):
+            b_k1 = np.dot(A, b_k)
+
+            b_k1_norm = np.linalg.norm(b_k1)
+            b_k1 = b_k1 / b_k1_norm
+
+            if np.linalg.norm(b_k1 - b_k) < tolerance:
+                break
+            b_k = b_k1
+
+        eigenvalue = np.dot(b_k.T, np.dot(A, b_k)) / np.dot(b_k.T, b_k)
+
+        return eigenvalue, b_k
+
     def performSVD(self):
         m, n = self.tf_idf_matrix.shape
         a = self.tf_idf_matrix
         aT = self.tf_idf_matrix.T
-        aaT = a @ aT
         aTa = aT @ a
 
-        ev, evc = np.linalg.eig(aTa)
+        ev = np.zeros(n)
+        evc = np.zeros((n, n))
+
+        for i in range(n):
+            ev[i], evc[:, i] = self.find_eigen(aTa)
+
         sord_idx = np.argsort(ev)[::-1]
         ev = ev[sord_idx]
 
-        v = evc[:, sord_idx] 
+        v = evc[:, sord_idx]
         singular_values = np.sqrt(np.abs(ev))
 
         u = np.zeros((m, n))
@@ -48,43 +64,6 @@ class SVD():
         s = np.diag(singular_values[:n])
         return u, s, v.T
 
-    # def matrixU(self):
-    #     a = self.tf_idf_matrix
-    #     aT = self.tf_idf_matrix.T
-    #     aaT = a @ aT
-        
-    #     EVaaT, EVcaaT = np.linalg.eig(aaT)
-    #     ncols = np.argsort(EVaaT)[::-1]
-    #     u = EVcaaT[:,ncols]
-    #     return u
-
-    # def marixSum(self):
-    #     a = self.tf_idf_matrix
-    #     aT = self.tf_idf_matrix.T
-    #     aaT = a @ aT
-    #     aTa = aT @ a
-    #     matrix = None
-    #     if (np.size(aaT) > np.size(aTa)):
-    #         matrix = aTa
-    #     else:
-    #         matrix = aaT
-    #     ev, evc = np.linalg.eig(matrix)
-    #     singular_vals = np.sqrt(ev)
-    #     singular_vals = np.sort(singular_vals)[::-1]
-    #     s = np.zeros_like(a, dtype=float)
-    #     np.fill_diagonal(s, singular_vals)
-    #     return s
-
-    # def matrixV(self):
-    #     a = self.tf_idf_matrix
-    #     aT = self.tf_idf_matrix.T
-    #     aTa = aT @ a
-    #     EVaTa, EVcaTa = np.linalg.eig(aTa)
-    #     ncols = np.argsort(EVaTa)[::-1]
-    #     vT = EVcaTa[:,ncols].T
-    #     return vT
-
-
 class TF_IDF():
     def __init__(self, sents):
         self.sents = sents
@@ -97,7 +76,6 @@ class TF_IDF():
             for word in sent:
                 if word not in unique_words:
                     unique_words.append(word)
-        
         matrix = [[0.0 for i in range(len(unique_words))] for j in range(sents_num)]
         for row in range(len(matrix)):
             for col in range(len(matrix[0])):
@@ -121,7 +99,6 @@ class Preprocess():
         text = text.strip()
 
         sentences = sent_tokenize(text)
-        
         stop_words = set(stopwords.words("english"))
 
         processed_sent = []
@@ -132,43 +109,7 @@ class Preprocess():
             processed_sent.append(words)
         return processed_sent, sentences
 
-# with open("text2.txt", "r", encoding="UTF-8") as file:
-#     text = " ".join(file.readlines())
-
-def test_svd(num_tests=100, threshold=1e-5):
-    failed = 0
-
-    for i in range(num_tests):
-        shape=(random.randint(1, 100), random.randint(1, 100))
-        matrix = np.random.rand(*shape)
-
-        try:
-            # Custom SVD
-            svd_custom = SVD(matrix, sents=[])
-            A_custom = svd_custom.U @ svd_custom.S @ svd_custom.V
-
-            # Numpy SVD for reference
-            U_lib, S_lib, Vt_lib = np.linalg.svd(matrix, full_matrices=False)
-            A_lib = U_lib @ np.diag(S_lib) @ Vt_lib
-
-            # Check reconstruction error for both
-            err_custom = np.linalg.norm(matrix - A_custom)
-            err_lib = np.linalg.norm(matrix - A_lib)
-
-            if err_custom > threshold:
-                print(f"Test {i+1}: FAIL | Custom error: {err_custom:.4e} | Library error: {err_lib:.4e}")
-                failed += 1
-        except Exception as e:
-            print(f"Test {i+1}: EXCEPTION - {e}")
-            failed += 1
-        
-        print(shape)
-    print(f"\nTotal tests: {num_tests}")
-    print(f"Total failures (custom SVD error > {threshold}): {failed}")
-    
-
 def score_sentences_by_u(U, S, tokenized_sentences, num_of_sent):
-
     if U.shape[0] == 0 or S.shape[0] == 0:
         print("SVD returned empty matrix. Check the input text or preprocessing.")
         return []
@@ -206,12 +147,8 @@ def main():
         return
 
     preprocess = Preprocess(text)
-    # print(preprocess.text)
     tokenized_sentences, sentences = preprocess.text
     tf_idf = TF_IDF(tokenized_sentences)
-    # print(tf_idf.matrix)
-
-
     svd = SVD(tf_idf.matrix, tokenized_sentences)
 
     U, S, _ = svd.performSVD()
@@ -223,36 +160,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# Example run
-# test_svd(num_tests=50)
-
-
-# #print(text, '\n-----')
-# preprocess = Preprocess(text)
-# #print(preprocess.text)
-
-# # print(preprocess.text)
-# tf_idf = TF_IDF(preprocess.text)
-# # print(tf_idf.sents)
-# # print(tf_idf.matrix)
-
-# test_matrix1 = [[4, 2, 0], [1, 5, 6]]
-# test_matrix2 = [[3, 2, 2], [2, 3, -2]]
-# test_matrix3 = [[1, 2, 0], [5, 0, 2], [8, 5, 4], [6, 9, 7]]
-
-# svd = SVD(test_matrix1, tf_idf.sents)
-# print(svd.U)
-# print(svd.S)
-# print(svd.V)
-# print("--------Mine approach result-------")
-# print(svd.U @ svd.S @ svd.V, "\n---------")
-
-
-# U, S, D = np.linalg.svd(test_matrix1)
-# print(U)
-# s = np.zeros_like(test_matrix1, dtype=float)
-# np.fill_diagonal(s, S)
-# print(s)
-# print(D)
-# print(U@s@D)
