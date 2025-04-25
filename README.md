@@ -33,6 +33,9 @@ This tool can be useful for:
 ### 3. **Run the script:**
    Go to text_summarizer_use.ipynb and try on your own inside the first cell with text you want to summary.
 
+## Testing and Analyzation
+To see results with the different number of returned summary and to see explanation, go to test_text_summarization.ipynb file.
+
 ## Contributing
 - [Ostik24](https://github.com/Ostik24)
 - [SofiiaPop](https://github.com/SofiiaPop)
