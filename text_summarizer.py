@@ -8,7 +8,6 @@ from nltk.stem import WordNetLemmatizer
 from math import log
 import numpy as np
 
-
 class SVD():
     def __init__(self, matrix, sents):
         self.tf_idf_matrix = np.array(matrix)
