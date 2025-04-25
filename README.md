@@ -31,14 +31,7 @@ This tool can be useful for:
     ```
 
 ### 3. **Run the script:**
-    Once the setup is complete, you can run your Python script as usual:
-    ```bash
-    python text_summarizer.py
-    ```
-    or
-    ```bash
-    python3 text_summarizer.py
-    ```
+   Go to text_summarizer_use.ipynb and try on your own inside the first cell with text you want to summary.
 
 ## Contributing
 - [Ostik24](https://github.com/Ostik24)
