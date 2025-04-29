@@ -33,6 +33,19 @@ This tool can be useful for:
 ### 3. **Run the script:**
    Go to text_summarizer_use.ipynb and try on your own inside the first cell with text you want to summary.
 
+### Pip library
+   Our text-summarizer is also available as pip library, to download enter in your terminal:
+   ```bash
+   pip install mso_text_summarizer
+   ```
+   Now in any python file import it and use like that:
+   ```python
+   from mso_text_summarizer import run_text_summarization
+   run_text_summarization("<input_filename_with_text>", <number_of_sentences>, "<output_filename>")
+   ```
+
+
+
 ## Testing and Analyzation
 To see results with the different number of returned summary and to see explanation, go to test_text_summarization.ipynb file.
 
