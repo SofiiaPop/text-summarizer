@@ -41,7 +41,7 @@ This tool can be useful for:
    Now in any python file import it and use like that:
    ```python
    from mso_text_summarizer import run_text_summarization
-   run_text_summarization("<input_filename_with_text>", <number_of_sentences>, "<output_filename>")
+   run_text_summarization("<input_filename_with_text>", number_of_sentences, "<output_filename>")
    ```
 
 
